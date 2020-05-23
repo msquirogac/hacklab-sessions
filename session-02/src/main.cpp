@@ -1,21 +1,13 @@
 #include <Arduino.h>
 
-#define BAUDRATE 115200
-#define ubrr ((F_CPU/(BAUDRATE*16)-1))
+#define BAUDRATE 9600UL
+//#define ubrr ((F_CPU/(BAUDRATE*16))-1)
+
+#define UNUSED(x) *((volatile uint8_t*)(&x))
 
 int unused(uint16_t *x)
 {
     return *x;
-}
-
-void setup()
-{
-    UBRR0H = (uint8_t)(0);
-    UBRR0L = (uint8_t)8;
-    UCSR0A = 0x00;
-    UCSR0B = _BV(TXEN0) | _BV(RXEN0);
-    UCSR0C = _BV(USBS0) | _BV(UCSZ01) | _BV(UCSZ00);
-    //Serial.begin(115200);
 }
 
 void transmit(uint8_t c)
@@ -52,8 +44,29 @@ void println(uint8_t *arr)
     transmit('\n');
 }
 
+void setup()
+{
+    volatile uint32_t ubrr = (F_CPU/(16L*BAUDRATE))-1;
+    UBRR0H = (uint8_t)(ubrr>>8);
+    UBRR0L = (uint8_t)ubrr;
+    UCSR0A = 0x00;
+    UCSR0B = _BV(TXEN0) | _BV(RXEN0);
+    UCSR0C = _BV(USBS0) | _BV(UCSZ01) | _BV(UCSZ00);
+    //Serial.begin(115200);
+}
+
+void nothing(void)
+{
+    volatile uint16_t a=0;
+    a++;
+}
+
 void loop()
 {
+    //*((volatile uint16_t*)(&ubrr)) = ubrr;
+    
+    //UNUSED(ubrr);
+    nothing();
     print("Hola\n");
     println("Adios");
     delay(500);
