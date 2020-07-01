@@ -105,20 +105,126 @@ void uart_write(uint8_t *arr, size_t num)
 char l1[16];
 char l2[16];
 
+// Rows
+#define R0 0
+#define R1 1
+#define R2 2
+#define R3 3
+#define PORT_R PORTB
+
+// Columns
+#define C0 4
+#define C1 5
+#define C2 6
+#define C3 7
+#define PORT_C PORTD
+
+void keypad_init()
+{
+    DDRB = 0x00;
+    PORT_R = 0x00;
+    DDRD = 0x00;
+    PORT_C = _BV(C0) | _BV(C1) | _BV(C2) | _BV(C3);
+}
+
+void keypad_ctrl(uint8_t row)
+{
+    DDRB = _BV(row);
+}
+
+uint8_t keypad_read(void)
+{
+    return ((~PIND) >> 4) & 0x0F;
+}
+
+char maps[2][4] = {
+    {'1','2','3','4'},
+    {'=','=','=','='}
+    };
+
+uint8_t map0(uint8_t v)
+{
+    if(v)
+    {
+        uint8_t r=0;
+        while (v >>= 1)
+        {
+            r++;
+        }
+        return maps[0][r];
+    }
+    return 0;
+}
+
+uint8_t map1(uint8_t v)
+{
+    if(v)
+    {
+        uint8_t r=0;
+        while (v >>= 1)
+        {
+            r++;
+        }
+        return maps[1][r];
+    }
+    return 0;
+}
+
+uint8_t keysOld[4];
+
+struct
+{
+    char mem[4][6];
+    uint8_t row;
+    uint8_t col;
+} stack;
+
+volatile uint8_t key;
+
 int main()
 {
     DDRC = _BV(D4) | _BV(D5) | _BV(D6) | _BV(D7) | _BV(RS) | _BV(E);
     PORTC = 0x00;
     lcd_init();
     uart_init();
-    DDRB = _BV(5);
+    keypad_init();
+    memset(stack.mem, 0, 6);
     while(1)
     {
         _delay_ms(100);
-        PORTB ^= _BV(5);
+        uint8_t keys[4];
+        uint8_t event[4];
+        for(uint8_t i=0; i<4; i++)
+        {
+            keypad_ctrl(i);
+            keys[i] = keypad_read();
+            event[i] = (keysOld[i]^keys[i])&keys[i];
+            keysOld[i] = keys[i];
+            _delay_ms(1);
+        }
 
-        sprintf(l1, "%15d", 1234);
-        sprintf(l2, "%15d", 12354);
+        key = map0(event[0]);
+        if(key)
+        {
+            if(stack.col < 5)
+            {
+                stack.mem[stack.row][stack.col] = key;
+                stack.col++;
+            }
+        }
+        key = map1(event[1]);
+        if(key)
+        {
+            if(key == '=')
+            {
+                stack.col = 0;
+                stack.row = (stack.row+1)%4;
+                memset(stack.mem[stack.row], 0, 6);
+            }
+        }
+
+        sprintf(l1, "%15s", stack.mem[stack.row]);
+        sprintf(l2, "%15s", stack.mem[stack.row-1]);
 
         lcd_setCursor(0, 0);
         lcd_write(l1, 15);
