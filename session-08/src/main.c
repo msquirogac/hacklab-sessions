@@ -139,7 +139,7 @@ uint8_t keypad_read(void)
 
 char maps[2][4] = {
     {'1','2','3','4'},
-    {'=','=','=','='}
+    {'+','-','*','='}
     };
 
 uint8_t map0(uint8_t v)
@@ -215,16 +215,47 @@ int main()
         key = map1(event[1]);
         if(key)
         {
-            if(key == '=')
+            switch (key)
             {
+            case '=':
+            {
+                if(stack.col > 0)
+                {
+                    stack.col = 0;
+                    stack.row = (stack.row+1)%4;
+                    memset(stack.mem[stack.row], 0, 6);
+                }
+            } break;
+            case '+':
+            {
+                uint8_t row0, row1;
+                char *p1, *p2;
+                if(stack.col == 0)
+                {
+                    stack.row = (stack.row+3)%4;
+                }
+                row0 = (stack.row+3)%4;
+                row1 = stack.row;
+                p1 = stack.mem[row0];
+                p2 = stack.mem[row1];
+                uint16_t num1 = atoi(p1);
+                uint16_t num2 = atoi(p2);
+                itoa(num1+num2, p1, 10);
                 stack.col = 0;
-                stack.row = (stack.row+1)%4;
                 memset(stack.mem[stack.row], 0, 6);
+            } break;
+            default:
+                break;
             }
         }
-
-        sprintf(l1, "%15s", stack.mem[stack.row]);
-        sprintf(l2, "%15s", stack.mem[stack.row-1]);
+        /*
+        uint8_t row0 = (stack.row == 0)? 3: stack.row-1;
+        uint8_t row1 = stack.row;
+        */
+        uint8_t row0 = (stack.row+3)%4;
+        uint8_t row1 = stack.row;
+        sprintf(l1, "%15s", stack.mem[row0]);
+        sprintf(l2, "%15s", stack.mem[row1]);
 
         lcd_setCursor(0, 0);
         lcd_write(l1, 15);
